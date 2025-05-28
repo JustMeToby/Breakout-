@@ -1,0 +1,11 @@
+A clone of Breakout with the following features:
+
+
+- A level start animation with a timer, after which the balls start automatically
+- A counter for the remaining lives
+- A counter for points, with different points assigned to the different block types
+- Several different types of blocks:
+ - Normal Blocks, that disapear when hit
+ - Hard Blocks, that disapear when hit twice
+ - Doppler Blocks, that add another ball to the game
+ - Exploding Blocks, that incease the hitcount for all surrounding blocks by one

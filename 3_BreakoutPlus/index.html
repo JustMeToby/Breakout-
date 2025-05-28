@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Breakout+</title>
+<link href='http://fonts.googleapis.com/css?family=VT323' rel='stylesheet' type='text/css'>
+<link href="css/layout.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+<header>
+    <h1 id="game-title">Breakout<em>+</em></h1>
+</header>
+<main>
+    <div id="gamebox">
+			<!--
+			the stage in which our game will be displayed
+			also is it used as container to which all child elements have an relative position
+			-->
+            <div id="game-control">
+                <ul id="controls">
+                    <li class="control-title">Lives:</li>
+                    <li class="lives">1</li>
+                    <li class="control-title">Bricks left:</li>
+                    <li class="brickcount">22</li>
+                    <li class="control-title">SoundFX:</li>
+                    <li class="soundswitch soundon">On</li>
+                    <li class="control-title">Music:</li>
+                    <li class="musicswitch musicoff">Off</li>
+                </ul>
+            </div>
+			<div id="game-stage">
+				<!--
+				empty div-tag which is used as our container for the bricks.
+				they will be inserted here via jquery
+				-->
+				<div id="bricks-container"></div>
+				<!--
+				empty div-tag which is used as our ball
+				-->
+				<div id="ball"></div>
+				<!--
+				empty div-tag which is used as out player
+				-->
+				<div id="player"></div>
+				<!--
+				Game Over Display
+				-->
+				<div id="gameover"><h1>GAME OVER!</h1><br><br><p>Play Again?</p></div>
+                
+			</div>    
+    </div>
+</main>
+
+<!-- loading JS libraries -->
+<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+<script type="text/javascript" src="js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="js/jquery.sounds.js"></script>
+<script type="text/javascript" src="js/game.js"></script>
+
+
+</body>
+</html>
