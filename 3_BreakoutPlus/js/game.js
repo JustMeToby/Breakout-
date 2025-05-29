@@ -33,54 +33,47 @@
         _gameLoopId = null;
         
     var _levels = [
-        // Level 1: 9x7
+        // Level 1: Standard layout
         [
-            "XXXXXXX",
-            "XXXXXXX",
-            "XX S XX",
-            "X SSS X",
-            "XX S XX",
-            "XXXXXXX",
-            "XXXXXXX",
-            " S S S ",
-            "S S S S" // This row has 7 chars, last S is for visual balance if needed
-        ].map(row => row.padEnd(7, ' ')), // Ensure all rows are 7 chars, pad with space if shorter
-        // Level 2: 9x7
+            "XXXXXXXXXX",
+            "XXXXXXXXXX",
+            "XXX  XXXX",
+            "XX    XXXX",
+            "XXXXXXXXXX",
+            "XXXXXXXXXX",
+            "XXXXXXXXXX"
+        ],
+        // Level 2: A different pattern
         [
-            "X S X S", // 7 chars (last X removed for 7 col)
-            " S   S ",
-            "X     X",
-            " S XXX S",
-            "X     X",
-            " S   S ",
-            "X S X S",
-            " SS SS ",
-            "XXXXXXX"
-        ].map(row => row.padEnd(7, ' ')),
-        // Level 3: 9x7
+            "  XXXX  ",
+            " X    X ",
+            "X  XX  X",
+            "X      X",
+            "X  XX  X",
+            "X XXXX X",
+            " X    X ",
+            "  XXXX  "
+        ],
+        // Level 3: Introducing Strong Bricks
         [
-            "S S S S", // 7 chars
-            " XXXXX ",
-            "S S X S",
-            " XXXXX ",
-            "S S X S",
-            " XXXXX ",
-            "S S X S",
-            " XXXXX ",
-            "S S S S"
-        ].map(row => row.padEnd(7, ' ')),
-        // Level 4: 9x7 (Using C as X)
+            "SXXXXXXXXS",
+            " XSXXXXSX ",
+            "  XSXXSX  ",
+            "   XSXS   ",
+            "  XSXXSX  ",
+            " XSXXXXSX ",
+            "SXXXXXXXXS"
+        ],
+        // Level 4: Mixed and more complex
         [
-            "XSXCXSX",
-            "S C S C", // 7 chars
-            "X C X C",
-            "C S S C",
-            "X C X C",
-            "S C S C",
-            "XSXCXSX",
-            " CCCCC ",
-            "S S S S"
-        ].map(level => level.map(row => row.replace(/C/g, 'X').padEnd(7, ' '))) // Ensure C becomes X and padded
+            " X S X S X ",
+            "X X X X X X",
+            " S X S X S ",
+            "X X X X X X",
+            " S X S X S ",
+            "X X X X X X",
+            " X S X S X "
+        ]
     ];
     var _currentLevel = 0; // 0-indexed
 
@@ -344,7 +337,6 @@
     }
 
     function _kickOffBall() {
-        console.log("Attempting to kick off ball..."); // For debugging
         var randomAngle = Math.random() * -90 - 45;
         var deg2rad = randomAngle / 180 * Math.PI;
         var cos = Math.cos(deg2rad);
@@ -356,7 +348,6 @@
              _ballVelocityX = _ballVelocityX >= 0 ? 1 : -1;
         }
         _ballKicked = true;
-        console.log("_ballKicked set to true."); // For debugging
     }
 
     function _resetBall() {
@@ -389,19 +380,9 @@
             top: _playerYPos - _ballHeight
         });
         
-        // --- Modification Starts ---
-        // Remove any existing namespaced click handlers explicitly
-        _$gameStage.off('click.game'); 
-        
-        // Add the one-time click handler
-        _$gameStage.one("click.game", function(event) {
-            console.log("Game stage clicked to kick off ball. Event:", event); // For debugging
-            if (!_ballKicked) { // Double check state, though .one() should prevent multiple kicks
-                _kickOffBall();
-            }
+        _$gameStage.off('click.game').one("click.game", function () { 
+            _kickOffBall();
         });
-        console.log("Click handler for ball kick-off re-attached in _resetBall."); // For debugging
-        // --- Modification Ends ---
     }
 
     function _startSound() {
@@ -443,11 +424,8 @@
         _bricks = []; 
         var brickTpl = "<div class='brick'><div class='light'></div></div>"; 
         var currentLevelData = _levels[_currentLevel];
-        // Stage width is 650px. Brick width is 65px + 3px margin/border = 68px.
-        // Total grid width for 7 bricks = 7 * 68px = 476px.
-        // OffsetX = (650 - 476) / 2 = 87px.
-        var brickOffsetX = 87; // Centered offset from left for 7 columns
-        var brickOffsetY = 60;  // Initial offset from top (suitable for 9 rows)
+        var brickOffsetX = 100; // Initial offset from left
+        var brickOffsetY = 60;  // Initial offset from top
 
         for (var r = 0; r < currentLevelData.length; r++) {
             for (var c = 0; c < currentLevelData[r].length; c++) {
