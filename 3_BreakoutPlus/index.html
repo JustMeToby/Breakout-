@@ -5,6 +5,30 @@
 <title>Breakout+</title>
 <link href='http://fonts.googleapis.com/css?family=VT323' rel='stylesheet' type='text/css'>
 <link href="css/layout.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+/* New Brick Styles */
+.brick.brick-normal {
+    background-color: #4DA6FF !important; /* Blue */
+}
+.brick.brick-normal .light {
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%,rgba(255,255,255,0) 70%) !important;
+}
+
+.brick.brick-strong {
+    background-color: #B0B0B0 !important; /* Silver/Grey */
+}
+.brick.brick-strong .light {
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.7) 0%,rgba(255,255,255,0) 60%) !important;
+}
+
+/* Style for a strong brick that has been hit once */
+.brick.brick-strong.damaged {
+    background-color: #D32F2F !important; /* Red, to show damage */
+}
+.brick.brick-strong.damaged .light {
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.5) 0%,rgba(255,255,255,0) 50%) !important;
+}
+</style>
 </head>
 <body>
 <header>
@@ -46,6 +70,15 @@
 				Game Over Display
 				-->
 				<div id="gameover"><h1>GAME OVER!</h1><br><br><p>Play Again?</p></div>
+				<!--
+				Game Win Display
+				-->
+                <div id="gamewin" style="display:none;">
+                    <h1>YOU WIN!</h1>
+                    <br>
+                    <p><button id="playAgainButtonWin">Play Again?</button></p>
+                    <p><button id="nextLevelButton">Next Level</button></p>
+                </div>
                 
 			</div>    
     </div>
