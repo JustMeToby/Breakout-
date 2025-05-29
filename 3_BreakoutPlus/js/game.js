@@ -31,6 +31,51 @@
         _gameStagePos = null,
         _gameStageWidth = 0,
         _gameLoopId = null;
+        
+    var _levels = [
+        // Level 1: Standard layout
+        [
+            "XXXXXXXXXX",
+            "XXXXXXXXXX",
+            "XXX  XXXX",
+            "XX    XXXX",
+            "XXXXXXXXXX",
+            "XXXXXXXXXX",
+            "XXXXXXXXXX"
+        ],
+        // Level 2: A different pattern
+        [
+            "  XXXX  ",
+            " X    X ",
+            "X  XX  X",
+            "X      X",
+            "X  XX  X",
+            "X XXXX X",
+            " X    X ",
+            "  XXXX  "
+        ],
+        // Level 3: Introducing Strong Bricks
+        [
+            "SXXXXXXXXS",
+            " XSXXXXSX ",
+            "  XSXXSX  ",
+            "   XSXS   ",
+            "  XSXXSX  ",
+            " XSXXXXSX ",
+            "SXXXXXXXXS"
+        ],
+        // Level 4: Mixed and more complex
+        [
+            " X S X S X ",
+            "X X X X X X",
+            " S X S X S ",
+            "X X X X X X",
+            " S X S X S ",
+            "X X X X X X",
+            " X S X S X "
+        ]
+    ];
+    var _currentLevel = 0; // 0-indexed
 
     /**
      * initialize the game
@@ -103,431 +148,239 @@
         if (_ballKicked == true) {
 
             // check if ball is outside or on our stage boundaries
-            // keep in mind that we check the top left point of the ball
-            //
-            //  TL--TR     0,0 - 1,0
-            //  |    |      |     |
-            //  BL--BR     0,1 - 1,1
-            //
-            // check top boundary
             if (_ballPos.top < 0) {
-                // ball is outside or on the top boundary
-                // reflect its Y velocity
                 _ballVelocityY *= -1;
-                // also we need to reset the position of the ball to the position of the boundary
                 _$ball.css("top", 0);
-
-                // we have a collision
                 $.sounds.play('hitwall');
                 _collisionDetected = true;
             }
-            // ball could never be at top and bottom at the same time
-            // so we only need to check the top OR bottom boundary
-            //
-            // check bottom boundary
-            // this is the only boundary with a different hit testing
-            // the ball can fall off the stage and the player looses a live
-            // therefore we check if the ball is completely below the stage
-            else if (_ballPos.top > _stageHeight) {
-                // we have a collision (we hit the void)
+            else if (_ballPos.top > _stageHeight) { // Ball fell off bottom
                 $.sounds.play('balldrop');
-                _collisionDetected = true;
-
-                // ball fell off the stage, reset it
+                // _collisionDetected = true; // Not strictly a collision with an object, but ends the turn for the ball
                 _remainingLives--;
-
-                //Display current lives count
                 $('.lives').text(_remainingLives);
-                _resetBall();
+                _resetBall(); // This will call _init if lives are 0, which restarts the loop.
+                return; // Important: Exit _gameLoop as the ball is reset or game is over.
             }
 
-            // next we need to check the left and right boundaries
-            // note: the ball could be on or over a horizontal and a vertical
-            // axis at the same time
-            //
-            // check the left side
-            if (_ballPos.left < 0) {
-                // ball is outside or on the left boundary
-                // reflect its X velocity
-                _ballVelocityX *= -1;
-                // also we need to reset the position of the ball to the position of the boundary
-                _$ball.css("left", 0);
-
-                // we have a collision
-                $.sounds.play('hitwall');
-                _collisionDetected = true;
-            }
-            // same with the horizontal axis, the ball could be only left OR right
-            else if (_ballPos.left + _ballWidth > _stageWidth) {
-                // ball is outside or on the right boundary
-                // reflect its X velocity
-                _ballVelocityX *= -1;
-                // also we need to reset the position of the ball to the position of the boundary
-                _$ball.css("left", _stageWidth - _ballWidth);
-
-                // we have a collision
-                $.sounds.play('hitwall');
-                _collisionDetected = true;
+            if (! _collisionDetected) { // Only check other collisions if not already handled
+                if (_ballPos.left < 0) {
+                    _ballVelocityX *= -1;
+                    _$ball.css("left", 0);
+                    $.sounds.play('hitwall');
+                    _collisionDetected = true;
+                }
+                else if (_ballPos.left + _ballWidth > _stageWidth) {
+                    _ballVelocityX *= -1;
+                    _$ball.css("left", _stageWidth - _ballWidth);
+                    $.sounds.play('hitwall');
+                    _collisionDetected = true;
+                }
             }
 
-            // we only need to do the next test if until now none collision occurred
+
             if (_collisionDetected == false) {
-
-                // we checked now the boundaries of our stage
-                // next we should check if the ball is colliding with the player
-                // therefore we use almost the same logic as with our stage boundaries
-                // but in a slightly different way
-                //
-                // first we check if the ball's left position + its width is greater than
-                // the players left position and if the ball's left position is smaller than
-                // the players left position + its width
                 if (_ballPos.left + _ballWidth > _playerPos.left && _ballPos.left < _playerPos.left + _playerWidth) {
-                    // the ball is within the range we tested
-                    // no we only need to check if the balls top position and it's height is greater
-                    // than the players y-position
-                    if (_ballPos.top + _ballHeight > _playerYPos) {
-                        // ball hits the player because it is within the range of the players left position + it's width
-                        // and the balls top position + it's height is greater than the players top position
-                        //
-                        //  HIT TEST = TRUE
-                        //
-                        //      player left         player left + player width
-                        //                |         |
-                        //                |         |
-                        //                |         |
-                        //                |  ball   |
-                        //                |  XXXX   |
-                        //  player top ------XXXX------------
-                        //
-                        //
-                        //
-                        //  HIT TEST = FALSE
-                        //
-                        //      player left         player left + player width
-                        //                |         |
-                        //                |         |
-                        //                |         |
-                        //                |         | ball
-                        //                |         | XXXX
-                        //  player top ---------------XXXX---
-                        //
-                        //
-                        // now we only need to reflect the balls y velocity
+                    if (_ballPos.top + _ballHeight > _playerYPos && _ballPos.top < _playerYPos + _playerHeight ) { 
                         _ballVelocityY *= -1;
+                        _$ball.css("top", _playerYPos - _ballHeight); // Move ball out of player
                         $.sounds.play('hitwall');
-
-
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        // NEEDS CHECK IF BALL IS BELOW THE PLAYER TO PREVENT BOUNCING WITHIN THE PLAYER !
-                        // Same logic to move it out of the player as with the bricks?
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        // now we need to find out where exactly the ball hits the player
-                        // therefore we can use the same logic which is used between circle and circle collisions
-                        // first: we need the distance between the balls and the player center
-                        /*						var ballCenterX = _ballPos.left + _ballWidth * .5;
-                        						var ballCenterY = _ballPos.top + _ballHeight * .5;
-                        						var playerCenterX = _playerPos.left + _playerWidth * .5;
-                        						var playerCenterY = _playerPos.top + _playerHeight * .5;
-                        						// calc the absolute distance
-                        						var distanceX = Math.abs(playerCenterX - brickCenterX);
-                        						var distanceY = Math.abs(playerCenterY - brickCenterY);
-                        						// then we need the total width and height of both objects diveded by 2
-                        						var totalWidth = (_ballWidth + _playerWidth) * .5;
-                        						var totalHeight = (_ballHeight + _playerHeight) * .5;
-                        						// when we subtract the total width and height from our distance we can
-                        						// check which delta (overlap) is smaller and get our hit axis
-                        						var overlapX = totalWidth - distanceX;
-                        						var overlapY = totalHeight - distanceY;
-
-                        						if (overlapX < overlapY) {
-                        							_ballVelocityX *= -1;
-                        							// move the ball out of the collision
-                        							_$ball.css("left", _ballPos.left + overlapX);
-                        						} else {
-                        							_ballVelocityY *= -1;
-                        							// move the ball out of the collision
-                        							_$ball.css("top", _ballPos.top + overlapY);
-                        						}                        
-                                                */
-
-
-
-
-                        /*						// the next step within the loop is to check if the ball hits the player
-                        						// if true we want to rise the difficulty and increase the speed of the ball
-                        						// therefore we need to scale the balls velocity vector (x,y)
-                        						// first: increase the current speed within its constrains
-                        						_ballSpeed = Math.min(_ballMaxSpeed, ++_ballSpeed);
-
-                        						// second: get the unit vector of the velocity vector
-                        						var lVector = Math.sqrt(Math.pow(_ballVelocityX, 2) + Math.pow(_ballVelocityY, 2));
-                        						var uVectorX = _ballVelocityX / (lVector);
-                        						var uVectorY = _ballVelocityY / (lVector);
-                        						// third: multiply the speed with the unit vector, the result will be the increased veolcity
-                        						_ballVelocityX = uVectorX * _ballSpeed;
-                        						_ballVelocityY = uVectorY * _ballSpeed;*/
+                         _collisionDetected = true; 
                     }
                 }
             }
 
-            // we only need to do the next test if until now none collision occurred
             if (_collisionDetected == false) {
-
-                // we iterate through all stored brick objects
                 for (var i = 0; i < _bricks.length; i++) {
-                    // get the brick to test against
                     var $brick = _bricks[i];
+                    if (!$brick || $brick.length === 0 || !$brick.get(0).parentNode) continue; 
+                    
                     var brickPos = $brick.position();
-
-                    // we check against both axes
                     var hitOnXAxis = false;
                     var hitOnYAxis = false;
 
-                    // first we check the x axis
-                    // is the balls left position + its width greater than or equal to the bricks left position
-                    // and is the balls left position smaller than or equal to the bricks left position + its width
                     if (_ballPos.left + _ballWidth >= brickPos.left && _ballPos.left <= brickPos.left + _brickWidth) {
-                        // then we have a collision
                         hitOnXAxis = true;
                     }
-
-                    // same for the other axis
                     if (_ballPos.top + _ballHeight >= brickPos.top && _ballPos.top <= brickPos.top + _brickHeight) {
-                        // then we have a collision
                         hitOnYAxis = true;
                     }
 
-                    // if we have a collision on both axes remove the brick
                     if (hitOnXAxis == true && hitOnYAxis == true) {
+                        var remainingHits = $brick.data('hits');
+                        var brickType = $brick.data('type');
 
+                        remainingHits--;
+                        $brick.data('hits', remainingHits);
 
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        // TESTING OF BRICK TYPE HAPPENS HERE !!!!!!!!!!!!
-                        // Using classes for the different types
-                        // And multiple classes for the multi-hit type
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
-                        //###########################################################################################
+                        if (remainingHits > 0) {
+                            if (brickType === 'strong') {
+                                $brick.addClass('damaged');
+                                $.sounds.play('hitmulti'); 
+                            }
+                        } else {
+                            $brick.remove(); 
+                            _bricks.splice(i, 1); 
+                            i--; 
+                            $.sounds.play('hitbrick'); 
+                            $('.brickcount').text(_bricks.length);
 
-                        // mark the dom object as hit
-                        // do not unset its reference (beware the gc)
-                        $brick.addClass("hit");
-
-                        //remove the brick from the bricks array
-                        _bricks.splice(i, 1);
-                        $.sounds.play('hitbrick');
-
-                        //Display current brick count
-                        $('.brickcount').text(_bricks.length);
-
-                        // now we need to find out where exactly the ball hits the brick
-                        // therefore we can use the same logic which is used between circle and circle collisions
-                        // first: we need the distance between the balls and the bricks center
+                            if (_bricks.length === 0) { // WIN CONDITION
+                                if (_gameLoopId) {
+                                    window.cancelAnimationFrame(_gameLoopId);
+                                    _gameLoopId = null;
+                                }
+                                _$ball.hide();
+                                $.sounds.play('hitmulti'); 
+                                
+                                $('#playAgainButtonWin').off('click').one('click', function() {
+                                    $('#gamewin').hide();
+                                    _currentLevel = 0; 
+                                    _init(); // Full reset and restart
+                                });
+                        
+                                $('#nextLevelButton').off('click').one('click', function() {
+                                    $('#gamewin').hide();
+                                    _currentLevel++;
+                                    if (_currentLevel >= _levels.length) {
+                                        alert("GAME COMPLETE! Congratulations! Starting over from Level 1.");
+                                        _currentLevel = 0; 
+                                    }
+                                    _init(); // Full reset and restart for next level
+                                });
+                                $('#gamewin').slideDown();
+                                return; 
+                            }
+                        }
+                        
+                        // Ball reflection logic (common for both damaged and destroyed brick hits)
                         var ballCenterX = _ballPos.left + _ballWidth * .5;
                         var ballCenterY = _ballPos.top + _ballHeight * .5;
                         var brickCenterX = brickPos.left + _brickWidth * .5;
                         var brickCenterY = brickPos.top + _brickHeight * .5;
-                        // calc the absolute distance
                         var distanceX = Math.abs(ballCenterX - brickCenterX);
                         var distanceY = Math.abs(ballCenterY - brickCenterY);
-                        // then we need the total width and height of both objects diveded by 2
                         var totalWidth = (_ballWidth + _brickWidth) * .5;
                         var totalHeight = (_ballHeight + _brickHeight) * .5;
-                        // when we subtract the total width and height from our distance we can
-                        // check which delta (overlap) is smaller and get our hit axis
                         var overlapX = totalWidth - distanceX;
                         var overlapY = totalHeight - distanceY;
 
                         if (overlapX < overlapY) {
                             _ballVelocityX *= -1;
-                            // move the ball out of the collision
-                            _$ball.css("left", _ballPos.left + overlapX);
+                            // Move ball out of brick
+                            _$ball.css("left", _ballPos.left + overlapX * (_ballPos.left < brickPos.left ? -1 : 1));
                         } else {
                             _ballVelocityY *= -1;
-                            // move the ball out of the collision
-                            _$ball.css("top", _ballPos.top + overlapY);
+                            // Move ball out of brick
+                            _$ball.css("top", _ballPos.top + overlapY * (_ballPos.top < brickPos.top ? -1 : 1));
                         }
-
-                        // break the for-loop because we want only one hit per loop
-                        break;
+                        break; 
                     }
-
-
                 }
-
             }
 
-            // we checked if the ball intersects with the stage boundaries,
-            // the player or a brick. during the check we altered the
-            // position of the ball and its velocity if one of the listed events occurred
-            // the final step is to move the ball by its updated velocity
             _$ball.css({
                 left: _ballPos.left + _ballVelocityX,
                 top: _ballPos.top + _ballVelocityY
             });
         }
-        // if the ball wasn't kicked yet we just put it again into the center of the player
         else {
+             var currentX = (_$player.position() && _$player.position().left !== undefined) ? _$player.position().left : _newPlayerXPostion;
             _$ball.css({
-                // tipp: instead of dividing by 2 it is faster to multiply by .5
-                left: _newPlayerXPostion + _playerWidth * .5 - _ballWidth * .5,
+                left: currentX + _playerWidth * .5 - _ballWidth * .5,
                 top: _playerYPos - _ballHeight
             });
         }
 
-        // at last, update the players position
         _$player.css("left", _newPlayerXPostion);
-
-        // the game loop is finished and we can call the next loop iteration
         _nextLoopIteration();
     }
 
-    /**
-     * call the next loop iteration
-     * @private
-     */
     function _nextLoopIteration() {
-        // get the next possible time to render the next frame
-        // replaces the old setTimeout Method
-        // usually keeps fps steady at 60fps if possible
-        // optimized by the vendors, huge performance boost when used instead of setTimeout
-        //
-        // get request the next animation frame and store the requests id
-        _gameLoopId = window.requestAnimationFrame(function () {
-            _gameLoop();
-        });
-    }
-
-    /**
-     * start the game loop
-     * @private
-     */
-    function _startGame() {
-        // only start the game loop if it is not currently running
-        if (_gameLoopId == null) {
-            // the loop has not been started
-
-            // we want to control our player with the mouse
-            // therefore we need a mousemove listener to get the
-            // the current position of the mouse from the returned event
-            $(document).on("mousemove", function (event) {
-                // we only need the x position of the mouse
-                // because our player can only move at the x axis
-                // we need to store the old x value to get our players x velocity
-                _mouseX = event.clientX;
+        // Ensure _gameLoopId is checked before requesting new frame
+        if (_gameLoopId !== null) { 
+            _gameLoopId = window.requestAnimationFrame(function () {
+                _gameLoop();
             });
-
-            // put the player into its place
-            _$player.css("top", _playerYPos);
-
-            //Display current lives count
-            $('.lives').text(_remainingLives);
-
-            // build the bricks
-            _buildBricks();
-
-            // reset the ball
-            _resetBall();
-
-            // call the next loop iteration
-            _nextLoopIteration();
         }
     }
 
+    function _startGame() {
+        // Always reset these for a new game (whether from _init or direct call)
+        _remainingLives = 5; 
+        _ballSpeed = 4; 
+        _ballKicked = false;
+        _ballVelocityX = 0;
+        _ballVelocityY = 0;
+        _mouseX = 0; 
+        _mouseOldX = 0;
+        
+        // Clear any existing game loop
+        if (_gameLoopId) {
+            window.cancelAnimationFrame(_gameLoopId);
+            _gameLoopId = null; 
+        }
+
+        // Setup event listeners (namespaced for easier removal)
+        $(document).off("mousemove.game").on("mousemove.game", function (event) {
+            _mouseX = event.clientX;
+        });
+        _$gameStage.off("click.game"); // Clear previous click listener
+
+        _$player.css("top", _playerYPos);
+        $('.lives').text(_remainingLives); 
+        _buildBricks();
+        _resetBall(); // This will set up the initial ball position and kick-off listener
+        
+        _gameLoopId = true; // Temporarily set to non-null to allow _nextLoopIteration to start
+        _nextLoopIteration(); // Start the game loop
+    }
+
     function _kickOffBall() {
-        // we want the ball to kick off in a random direction
-        // therefore we need a angle between 45 and 135
         var randomAngle = Math.random() * -90 - 45;
         var deg2rad = randomAngle / 180 * Math.PI;
         var cos = Math.cos(deg2rad);
         var sin = Math.sin(deg2rad);
-
-        // multiply the sin and cos values with the initial speed value
         _ballVelocityX = cos * _ballSpeed;
-        _ballVelocityY = sin * _ballSpeed; // we want to start of in the upper direction
-        
+        _ballVelocityY = sin * _ballSpeed;
         console.log('Ball Speed: '+_ballSpeed+' VelocityX: '+_ballVelocityX+' VelocityY: '+_ballVelocityY);
-
-        // If kickoff direction is too close to 90 degrees, which is boring, change it a little        
-        if (_ballVelocityX < 1) {
-            if (_ballVelocityX >= 0) {
-                ++_ballVelocityX
-            } else if (_ballVelocityX >= -1) {
-                --_ballVelocityX
-            }
+        if (_ballVelocityX < 1 && _ballVelocityX > -1) { 
+             _ballVelocityX = _ballVelocityX >= 0 ? 1 : -1;
         }
-
-        // set the kickoff control value ot true
         _ballKicked = true;
     }
 
     function _resetBall() {
-
-        // Checking if Game Over
+        _$ball.show(); 
         if (_remainingLives === 0) {
-            $.sounds.play('gameover');
-            $('#gameover').slideDown().click(function () {
-                $('#gameover').hide();
-                _bricks = [];
-                _remainingLives = 5;
-                _ballSpeed = 4;
-                _ballVelocityX = 0;
-                _ballVelocityY = 0;
-                _ballMaxSpeed = 10;
-                _ballWidth = 0;
-                _ballHeight = 0;
-                _ballKicked = false;
-                _playerWidth = 0;
-                _playerYPos = 0;
-                _playerVelocityX = 0;
-                _brickWidth = 0;
-                _brickHeight = 0;
-                _stageWidth = 0;
-                _stageHeight = 0;
-                _mouseX = 0;
-                _mouseOldX = 0;
-                _gameStagePos = null;
-                _gameStageWidth = 0;
+            if (_gameLoopId) {
+                window.cancelAnimationFrame(_gameLoopId);
                 _gameLoopId = null;
-                $('.brick').remove();
-                $("body").off("click", "*");
-                $("body").off("mousemove", "*");
-                _init();
-            })
-            return;
+            }
+            _$ball.hide(); 
+            $.sounds.play('gameover');
+            
+            // Unbind specific game event handlers
+            $(document).off("mousemove.game");
+            _$gameStage.off("click.game");
 
-
+            $('#gameover').slideDown().one('click', function () {
+                $('#gameover').hide();
+                _currentLevel = 0; 
+                _init(); // This will call _startGame which resets all necessary states
+            });
+            return; 
         }
 
-        // reset the kickoff
         _ballKicked = false;
-
-        // at start we want the ball to be on top of the player
-        _$ball.css("top", _playerYPos - _ballHeight);
-
-        // we want the ball to be kicked only once when we clicked on the stage
-        // therefore we add an event listener which removes itself after the first execution
-        _$gameStage.one("click", function () {
+        // Ensure player position is valid before using it.
+        var playerLeft = (_$player.position() && typeof _$player.position().left !== 'undefined') ? _$player.position().left : (_stageWidth / 2 - _playerWidth / 2);
+        _$ball.css({
+            left: playerLeft + _playerWidth * .5 - _ballWidth * .5,
+            top: _playerYPos - _ballHeight
+        });
+        
+        _$gameStage.off('click.game').one("click.game", function () { 
             _kickOffBall();
         });
     }
@@ -545,10 +398,7 @@
                 ],
                 path: 'sounds/'
             })
-            // Setting Sound to on
         $.sounds.mute(false)
-
-        // Adding Event Handler for soundFX switch
         $('.soundswitch').click(function (e) {
             if ($('.soundswitch').hasClass('soundoff')) {
                 $('.soundswitch').removeClass('soundoff').addClass('soundon').text('On');
@@ -558,8 +408,6 @@
                 $.sounds.mute(true);
             }
         });
-
-        // Adding Event Handler for music switch
         $('.musicswitch').click(function (e) {
             if ($('.musicswitch').hasClass('musicoff')) {
                 $('.musicswitch').removeClass('musicoff').addClass('musicon').text('On');
@@ -569,64 +417,48 @@
                 $.sounds.loop('music', 0.0)
             }
         });
-
     }
 
     function _buildBricks() {
-        // the brick template
-        var brickTpl = "<div class='brick yellow'><div class='light'></div></div>";
+        _$gameStage.find('.brick').remove(); 
+        _bricks = []; 
+        var brickTpl = "<div class='brick'><div class='light'></div></div>"; 
+        var currentLevelData = _levels[_currentLevel];
+        var brickOffsetX = 100; // Initial offset from left
+        var brickOffsetY = 60;  // Initial offset from top
 
-        // remove leftover bricks from previous games
+        for (var r = 0; r < currentLevelData.length; r++) {
+            for (var c = 0; c < currentLevelData[r].length; c++) {
+                var brickTypeChar = currentLevelData[r][c];
+                if (brickTypeChar === 'X' || brickTypeChar === 'S') {
+                    var $brick = $(brickTpl);
+                    if (brickTypeChar === 'X') {
+                        $brick.addClass('brick-normal yellow'); 
+                        $brick.data('type', 'normal');
+                        $brick.data('hits', 1);
+                    } else if (brickTypeChar === 'S') {
+                        $brick.addClass('brick-strong');
+                        $brick.data('type', 'strong');
+                        $brick.data('hits', 2);
+                    }
 
-
-        // we want 7 bricks in a row
-        for (var r = 0; r < 7; r++) {
-            // and 10 in a column
-            for (var c = 0; c < 10; c++) {
-                // create the brick div through $(html-tag)
-                var $brick = $(brickTpl);
-
-                // append the brick
-                _$gameStage.append($brick);
-
-                // if it is the first brick we need the width and height from it
-                if (r == 0 && c == 0) {
-                    _brickWidth = ($brick.width() + 3);
-                    _brickHeight = ($brick.height() + 3);
+                    _$gameStage.append($brick);
+                    // Calculate brickWidth and brickHeight only once using the first brick
+                    if (_bricks.length === 0) { 
+                        _brickWidth = ($brick.width() + 3); // Assuming 3px is for margin/border
+                        _brickHeight = ($brick.height() + 3);
+                    }
+                    $brick.css({
+                        left: _brickWidth * c + brickOffsetX, 
+                        top: _brickHeight * r + brickOffsetY  
+                    });
+                    _bricks.push($brick);
                 }
-
-                // set its correct position
-                $brick.css({
-                    left: _brickWidth * r + 100,
-                    top: _brickHeight * c + 60
-                });
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-                // Inserting the different types of bricks happens here
-                // Using classes for the different types
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-                //###########################################################################################
-
-                // add the brick obj into the bricks array
-                _bricks.push($brick);
-
-
-                //Display current brick count
-                $('.brickcount').text(_bricks.length)
             }
         }
+        $('.brickcount').text(_bricks.length);
     }
 
-    // wait until the document is ready
     $(document).ready(_init);
 
 })(jQuery);
