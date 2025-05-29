@@ -28,7 +28,15 @@ main {
     height: auto;
     min-height: 100%;
     padding: 2rem 0 0;
-    background: url(../images/gun_metal_@2X.png);
+    background:
+    linear-gradient(27deg, #151515 5px, transparent 5px) 0 5px,
+    linear-gradient(207deg, #151515 5px, transparent 5px) 10px 0px,
+    linear-gradient(27deg, #222 5px, transparent 5px) 0px 10px,
+    linear-gradient(207deg, #222 5px, transparent 5px) 10px 5px,
+    linear-gradient(90deg, #1b1b1b 10px, transparent 10px),
+    linear-gradient(#1d1d1d 25%, #1a1a1a 25%, #1a1a1a 50%, transparent 50%, transparent 75%, #242424 75%, #242424);
+    background-color: #131313;
+    background-size: 20px 20px;
     text-align: center;
 }
 
@@ -36,7 +44,21 @@ header {
     display: block;
     height: 10rem;
     padding: 1rem;
-    background: url(../images/knitted-netting_@2X.png);
+    --s: 31px; /* control the size*/
+    --c1: #f2f2f2;
+    --c2: #cdcbcc;
+    --c3: #999999;
+    
+    --_g: 0 120deg,#0000 0;
+    background:
+      conic-gradient(             at calc(250%/3) calc(100%/3),var(--c3) var(--_g)),
+      conic-gradient(from -120deg at calc( 50%/3) calc(100%/3),var(--c2) var(--_g)),
+      conic-gradient(from  120deg at calc(100%/3) calc(250%/3),var(--c1) var(--_g)),
+      conic-gradient(from  120deg at calc(200%/3) calc(250%/3),var(--c1) var(--_g)),
+      conic-gradient(from -180deg at calc(100%/3) 50%,var(--c2)  60deg,var(--c1) var(--_g)),
+      conic-gradient(from   60deg at calc(200%/3) 50%,var(--c1)  60deg,var(--c3) var(--_g)),
+      conic-gradient(from  -60deg at 50% calc(100%/3),var(--c1) 120deg,var(--c2) 0 240deg,var(--c3) 0);
+    background-size: calc(var(--s)*sqrt(3)) var(--s);
     text-align: center;
     border-bottom:black 5px inset;
 }
@@ -104,9 +126,14 @@ header {
     margin: auto 0;
     background-color: black;
     overflow: hidden;
-    background-image:url(../images/starfield.png);
-    background-size:cover;
-    background-position:center;
+    background-image:
+      radial-gradient(1px 1px at 20px 30px, #eee, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 90px 40px, #ddd, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 170px 120px, #ccc, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 200px 50px, #fff, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 250px 100px, #eee, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 320px 80px, #ddd, rgba(0,0,0,0));
 }
 
 #game-stage:before {
