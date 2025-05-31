@@ -1,95 +1,60 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>Breakout+</title>
-<link href='http://fonts.googleapis.com/css?family=VT323' rel='stylesheet' type='text/css'>
-<link href="css/layout.css" rel="stylesheet" type="text/css">
-<style type="text/css">
-/* New Brick Styles */
-.brick.brick-normal {
-    background-color: #4DA6FF !important; /* Blue */
-}
-.brick.brick-normal .light {
-    background: radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%,rgba(255,255,255,0) 70%) !important;
-}
-
-.brick.brick-strong {
-    background-color: #B0B0B0 !important; /* Silver/Grey */
-}
-.brick.brick-strong .light {
-    background: radial-gradient(ellipse at center, rgba(255,255,255,0.7) 0%,rgba(255,255,255,0) 60%) !important;
-}
-
-/* Style for a strong brick that has been hit once */
-.brick.brick-strong.damaged {
-    background-color: #D32F2F !important; /* Red, to show damage */
-}
-.brick.brick-strong.damaged .light {
-    background: radial-gradient(ellipse at center, rgba(255,255,255,0.5) 0%,rgba(255,255,255,0) 50%) !important;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Breakout Plus</title>
+    <link rel="stylesheet" href="css/layout.css">
 </head>
 <body>
-<header>
-    <h1 id="game-title">Breakout<em>+</em></h1>
-</header>
-<main>
-    <div id="gamebox">
-			<!--
-			the stage in which our game will be displayed
-			also is it used as container to which all child elements have an relative position
-			-->
-            <div id="game-control">
-                <ul id="controls">
-                    <li class="control-title">Lives:</li>
-                    <li class="lives">1</li>
-                    <li class="control-title">Bricks left:</li>
-                    <li class="brickcount">22</li>
-                    <li class="control-title">SoundFX:</li>
-                    <li class="soundswitch soundon">On</li>
-                    <li class="control-title">Music:</li>
-                    <li class="musicswitch musicoff">Off</li>
-                </ul>
-            </div>
-			<div id="game-stage">
-				<!--
-				empty div-tag which is used as our container for the bricks.
-				they will be inserted here via jquery
-				-->
-				<div id="bricks-container"></div>
-				<!--
-				empty div-tag which is used as our ball
-				-->
-				<div id="ball"></div>
-				<!--
-				empty div-tag which is used as out player
-				-->
-				<div id="player"></div>
-				<!--
-				Game Over Display
-				-->
-				<div id="gameover"><h1>GAME OVER!</h1><br><br><p>Play Again?</p></div>
-				<!--
-				Game Win Display
-				-->
-                <div id="gamewin" style="display:none;">
-                    <h1>YOU WIN!</h1>
-                    <br>
-                    <p><button id="playAgainButtonWin">Play Again?</button></p>
-                    <p><button id="nextLevelButton">Next Level</button></p>
+    <div id="wrapper">
+        <div id="header">
+            <h1>Breakout Plus</h1>
+            <div id="controls">
+                <div class="control">
+                    <span>Sound:</span>
+                    <span class="soundswitch soundon">On</span>
                 </div>
-                
-			</div>    
+                <div class="control">
+                    <span>Music:</span>
+                    <span class="musicswitch musicoff">Off</span>
+                </div>
+                <div class="control">
+                    <span>Lives:</span>
+                    <span class="lives">5</span>
+                </div>
+                <div class="control">
+                    <span>Bricks:</span>
+                    <span class="brickcount">0</span>
+                </div>
+            </div>
+        </div>
+        <div id="game-stage">
+            <div id="starfield"></div>
+            <div id="bricks-container"></div>
+            <div id="ball"></div>
+            <div id="player"></div>
+            <div id="countdown-message" style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; color: white; text-align: center; z-index: 1000; text-shadow: 2px 2px 4px #000000; display: none;"></div>
+        </div>
+        <div id="gameover">
+            <h2>Game Over</h2>
+            <p>Click to play again</p>
+        </div>
+        <div id="gamewin">
+            <h2>Level Complete!</h2>
+            <p>
+                <button id="nextLevelButton">Next Level</button>
+                <button id="playAgainButtonWin">Play Again</button>
+            </p>
+        </div>
+        <div id="footer">
+            <p>&copy; 2023 Breakout Plus</p>
+        </div>
     </div>
-</main>
 
-<!-- loading JS libraries -->
-<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
-<script type="text/javascript" src="js/jquery-ui.min.js"></script>
-<script type="text/javascript" src="js/jquery.sounds.js"></script>
-<script type="text/javascript" src="js/game.js"></script>
-
-
+    <script src="js/jquery-1.11.0.min.js"></script>
+    <script src="js/jquery-ui.min.js"></script>
+    <script src="js/jquery.sounds.js"></script>
+    <script src="js/starfield.js"></script>
+    <script src="js/game.js"></script>
 </body>
 </html>

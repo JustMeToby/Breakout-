@@ -7,7 +7,8 @@
     var _$gameStage,
         _$player,
         _$ball,
-        _$bricksContainer;
+        _$bricksContainer,
+        _$countdownDisplay;
 
     // vars used within the game logic
     var _bricks = [],
@@ -30,7 +31,11 @@
         _mouseOldX = 0,
         _gameStagePos = null,
         _gameStageWidth = 0,
-        _gameLoopId = null;
+        _gameLoopId = null,
+        _gameState = "LOADING", // Possible states: LOADING, COUNTDOWN, WAITING_TO_LAUNCH, PLAYING, LEVELWON, GAMEOVER
+        _countdownTimer = 0,
+        _countdownMessage = "",
+        _lastCountdownTick = 0;
         
     var _levels = [
         // Level 1: 9x7
@@ -100,6 +105,12 @@
 
         // get the bricks container
         _$bricksContainer = $("#bricks-container");
+        
+        // Create countdown display if it doesn't exist
+        if ($("#countdown-message").length === 0) {
+            _$gameStage.append('<div id="countdown-message" style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; color: white; text-align: center; z-index: 1000; text-shadow: 2px 2px 4px #000000; display: none;"></div>');
+        }
+        _$countdownDisplay = $("#countdown-message");
 
         // store some never changing vars
         _ballWidth = _$ball.width();
@@ -114,7 +125,112 @@
 
         _startSound();
 
-        _startGame();
+        _prepareNewGame();
+    }
+
+    /**
+     * Prepare a new game from scratch
+     * @private
+     */
+    function _prepareNewGame() {
+        _currentLevel = 0;
+        _remainingLives = 5;
+        _ballSpeed = 4;
+        _mouseX = _stageWidth / 2; // Center mouse for paddle start
+        _mouseOldX = _mouseX;
+
+        $('.lives').text(_remainingLives);
+        _buildBricks(); // Build bricks for the first level
+        _prepareRound(true); // true: indicates it's a new level start (or game start)
+    }
+
+    /**
+     * Prepare a round (new level or after life loss)
+     * @param {boolean} isNewLevel - Whether this is a new level
+     * @private
+     */
+    function _prepareRound(isNewLevel) {
+        _ballKicked = false;
+        _$ball.show();
+        _gameState = "COUNTDOWN";
+        _countdownTimer = 3; // 3 seconds
+        _lastCountdownTick = Date.now();
+        _countdownMessage = "Level " + (_currentLevel + 1);
+        
+        // Center the paddle
+        var centeredPlayerX = _stageWidth / 2 - _playerWidth / 2;
+        _$player.css("left", centeredPlayerX);
+        _mouseX = centeredPlayerX + _playerWidth / 2; // Align mouse with paddle center
+        _mouseOldX = _mouseX;
+
+        // Position ball on centered paddle
+        _$ball.css({
+            left: centeredPlayerX + _playerWidth * .5 - _ballWidth * .5,
+            top: _playerYPos - _ballHeight
+        });
+
+        if (isNewLevel && _currentLevel > 0) { // Don't rebuild for level 0 if _prepareNewGame already did
+             _buildBricks(); // Build bricks for the new level
+        }
+        // If !isNewLevel (lost life), bricks are already there.
+
+        _$countdownDisplay.html(_countdownMessage + "<br/>Get Ready!<br/>" + _countdownTimer).show();
+
+        // Clear previous game loop, mouse/click handlers
+        if (_gameLoopId) {
+            window.cancelAnimationFrame(_gameLoopId);
+            _gameLoopId = null;
+        }
+        $(document).off("mousemove.game");
+        _$gameStage.off("click.game");
+
+        _gameLoopId = window.requestAnimationFrame(_countdownLoop);
+    }
+
+    /**
+     * Countdown loop for "Get Ready" sequence
+     * @private
+     */
+    function _countdownLoop() {
+        if (_gameState !== "COUNTDOWN") return;
+
+        var now = Date.now();
+        if (now - _lastCountdownTick >= 1000) { // Update every second
+            _countdownTimer--;
+            _lastCountdownTick = now;
+            _$countdownDisplay.html(_countdownMessage + "<br/>Get Ready!<br/>" + (_countdownTimer > 0 ? _countdownTimer : "Go!"));
+        }
+
+        if (_countdownTimer <= 0) {
+            setTimeout(function() {
+                _$countdownDisplay.hide();
+                _gameState = "WAITING_TO_LAUNCH";
+                
+                // Activate paddle movement
+                $(document).on("mousemove.game", function (event) {
+                    // Ensure mouseX is relative to the game stage if _gameStagePos is accurate
+                    if (_gameStagePos && typeof _gameStagePos.left !== 'undefined') {
+                        _mouseX = event.clientX - _gameStagePos.left;
+                    } else {
+                        _mouseX = event.clientX; // Fallback, might need adjustment depending on CSS
+                    }
+                });
+
+                // Activate ball launch
+                _$gameStage.one("click.game", function() {
+                    if (_gameState === "WAITING_TO_LAUNCH") {
+                        _kickOffBall();
+                    }
+                });
+                
+                // Transition to main game loop
+                if (_gameLoopId) { window.cancelAnimationFrame(_gameLoopId); }
+                _gameLoopId = window.requestAnimationFrame(_gameLoop);
+            }, 500); // Brief pause after countdown reaches 0
+            return; // Exit countdown loop
+        }
+
+        _gameLoopId = window.requestAnimationFrame(_countdownLoop);
     }
 
     /**
@@ -122,6 +238,8 @@
      * @private
      */
     function _gameLoop() {
+        if (_gameState !== "PLAYING" && _gameState !== "WAITING_TO_LAUNCH") return;
+
         // get the current position of the ball
         var _ballPos = _$ball.position();
 
@@ -135,24 +253,18 @@
         // a variable that will help us control the collision detection
         var _collisionDetected = false;
 
-        // first thing to do is updating the players position by its x velocity
-        // the players x velocity is the delta between the current and the old mouse x position
-        _playerVelocityX = _mouseX - _mouseOldX;
+        // Update player position based on mouse movement
+        if (_gameState === "PLAYING" || _gameState === "WAITING_TO_LAUNCH") {
+            _playerVelocityX = _mouseX - _mouseOldX;
+            _mouseOldX = _mouseX;
+            var newPlayerPosX = _playerPos.left + _playerVelocityX;
+            var maxPlayerXPos = _gameStageWidth - _playerWidth;
+            var _newPlayerXPostion = Math.max(0, Math.min(newPlayerPosX, maxPlayerXPos));
+            _$player.css("left", _newPlayerXPostion);
+        }
 
-        // to keep getting correct mouse x position deltas we need to set the old mouse x position equal to the current
-        _mouseOldX = _mouseX;
-
-        // now we can update the players position by the players x velocity
-        // but since we dont want the player to left the stage we also need to constrain its position
-        // first we need the new position of the player
-        var newPlayerPosX = _playerPos.left + _playerVelocityX;
-        // then we need the maximum position of the player
-        var maxPlayerXPos = _gameStageWidth - _playerWidth;
-        // constrain the position with Math.min and Math.max
-        var _newPlayerXPostion = Math.max(0, Math.min(newPlayerPosX, maxPlayerXPos));
-
-        // we only need collision detection if the ball was kicked off
-        if (_ballKicked == true) {
+        // we only need collision detection if the ball is in play
+        if (_gameState === "PLAYING") {
 
             // check if ball is outside or on our stage boundaries
             if (_ballPos.top < 0) {
@@ -164,8 +276,6 @@
             else if (_ballPos.top > _stageHeight) { // Ball fell off bottom
                 $.sounds.play('balldrop');
                 // _collisionDetected = true; // Not strictly a collision with an object, but ends the turn for the ball
-                _remainingLives--;
-                $('.lives').text(_remainingLives);
                 _resetBall(); // This will call _init if lives are 0, which restarts the loop.
                 return; // Important: Exit _gameLoop as the ball is reset or game is over.
             }
@@ -233,6 +343,7 @@
                             $('.brickcount').text(_bricks.length);
 
                             if (_bricks.length === 0) { // WIN CONDITION
+                                _gameState = "LEVELWON";
                                 if (_gameLoopId) {
                                     window.cancelAnimationFrame(_gameLoopId);
                                     _gameLoopId = null;
@@ -243,17 +354,23 @@
                                 $('#playAgainButtonWin').off('click').one('click', function() {
                                     $('#gamewin').hide();
                                     _currentLevel = 0; 
-                                    _init(); // Full reset and restart
+                                    _prepareNewGame(); // Full reset and restart
                                 });
                         
                                 $('#nextLevelButton').off('click').one('click', function() {
                                     $('#gamewin').hide();
                                     _currentLevel++;
                                     if (_currentLevel >= _levels.length) {
-                                        alert("GAME COMPLETE! Congratulations! Starting over from Level 1.");
+                                        _$countdownDisplay.html("GAME COMPLETE!<br/>Starting Over...").show();
                                         _currentLevel = 0; 
+                                        // Short delay before starting new game to show message
+                                        setTimeout(function() { 
+                                            _$countdownDisplay.hide();
+                                            _prepareNewGame(); // This rebuilds bricks for level 0 and starts countdown
+                                        }, 3000);
+                                    } else {
+                                        _prepareRound(true); // true: it's a new level
                                     }
-                                    _init(); // Full reset and restart for next level
                                 });
                                 $('#gamewin').slideDown();
                                 return; 
@@ -291,117 +408,68 @@
                 top: _ballPos.top + _ballVelocityY
             });
         }
-        else {
-             var currentX = (_$player.position() && _$player.position().left !== undefined) ? _$player.position().left : _newPlayerXPostion;
+        else if (_gameState === "WAITING_TO_LAUNCH") { // Ball follows paddle
+            var playerCurrentX = _$player.position().left;
             _$ball.css({
-                left: currentX + _playerWidth * .5 - _ballWidth * .5,
+                left: playerCurrentX + _playerWidth * .5 - _ballWidth * .5,
                 top: _playerYPos - _ballHeight
             });
         }
 
-        _$player.css("left", _newPlayerXPostion);
         _nextLoopIteration();
     }
 
     function _nextLoopIteration() {
-        // Ensure _gameLoopId is checked before requesting new frame
-        if (_gameLoopId !== null) { 
-            _gameLoopId = window.requestAnimationFrame(function () {
-                _gameLoop();
-            });
+        // Only continue if game is in a state that requires the main loop
+        if (_gameState === "PLAYING" || _gameState === "WAITING_TO_LAUNCH") {
+            _gameLoopId = window.requestAnimationFrame(_gameLoop);
+        } else {
+            if (_gameLoopId) {
+                window.cancelAnimationFrame(_gameLoopId);
+                _gameLoopId = null;
+            }
         }
-    }
-
-    function _startGame() {
-        // Always reset these for a new game (whether from _init or direct call)
-        _remainingLives = 5; 
-        _ballSpeed = 4; 
-        _ballKicked = false;
-        _ballVelocityX = 0;
-        _ballVelocityY = 0;
-        _mouseX = 0; 
-        _mouseOldX = 0;
-        
-        // Clear any existing game loop
-        if (_gameLoopId) {
-            window.cancelAnimationFrame(_gameLoopId);
-            _gameLoopId = null; 
-        }
-
-        // Setup event listeners (namespaced for easier removal)
-        $(document).off("mousemove.game").on("mousemove.game", function (event) {
-            _mouseX = event.clientX;
-        });
-        _$gameStage.off("click.game"); // Clear previous click listener
-
-        _$player.css("top", _playerYPos);
-        $('.lives').text(_remainingLives); 
-        _buildBricks();
-        _resetBall(); // This will set up the initial ball position and kick-off listener
-        
-        _gameLoopId = true; // Temporarily set to non-null to allow _nextLoopIteration to start
-        _nextLoopIteration(); // Start the game loop
     }
 
     function _kickOffBall() {
-        console.log("Attempting to kick off ball..."); // For debugging
         var randomAngle = Math.random() * -90 - 45;
         var deg2rad = randomAngle / 180 * Math.PI;
         var cos = Math.cos(deg2rad);
         var sin = Math.sin(deg2rad);
         _ballVelocityX = cos * _ballSpeed;
         _ballVelocityY = sin * _ballSpeed;
-        console.log('Ball Speed: '+_ballSpeed+' VelocityX: '+_ballVelocityX+' VelocityY: '+_ballVelocityY);
         if (_ballVelocityX < 1 && _ballVelocityX > -1) { 
              _ballVelocityX = _ballVelocityX >= 0 ? 1 : -1;
         }
         _ballKicked = true;
-        console.log("_ballKicked set to true."); // For debugging
+        _gameState = "PLAYING";
     }
 
     function _resetBall() {
-        _$ball.show(); 
-        if (_remainingLives === 0) {
-            if (_gameLoopId) {
-                window.cancelAnimationFrame(_gameLoopId);
-                _gameLoopId = null;
-            }
-            _$ball.hide(); 
+        _remainingLives--;
+        $('.lives').text(_remainingLives);
+
+        if (_gameLoopId) { // Stop current game loop activity immediately
+            window.cancelAnimationFrame(_gameLoopId);
+            _gameLoopId = null;
+        }
+        $(document).off("mousemove.game"); // Stop paddle movement
+        _$gameStage.off("click.game");    // Stop ball launch
+
+        if (_remainingLives <= 0) {
+            _gameState = "GAMEOVER";
+            _$ball.hide();
             $.sounds.play('gameover');
-            
-            // Unbind specific game event handlers
-            $(document).off("mousemove.game");
-            _$gameStage.off("click.game");
+            _$countdownDisplay.hide(); // Ensure countdown isn't stuck
 
             $('#gameover').slideDown().one('click', function () {
                 $('#gameover').hide();
-                _currentLevel = 0; 
-                _init(); // This will call _startGame which resets all necessary states
+                _prepareNewGame(); // This will reset level to 0 and call _prepareRound
             });
-            return; 
+        } else {
+            // Lives remaining, prepare for the next ball on the current level
+            _prepareRound(false); // false: not a new level, just lost a life
         }
-
-        _ballKicked = false;
-        // Ensure player position is valid before using it.
-        var playerLeft = (_$player.position() && typeof _$player.position().left !== 'undefined') ? _$player.position().left : (_stageWidth / 2 - _playerWidth / 2);
-        _$ball.css({
-            left: playerLeft + _playerWidth * .5 - _ballWidth * .5,
-            top: _playerYPos - _ballHeight
-        });
-        
-        // --- Modification Starts ---
-        // Remove any existing namespaced click handlers explicitly
-        _$gameStage.off('click.game'); 
-        
-        // Add the one-time click handler
-        _$gameStage.one("click.game", function(event) {
-            console.log("Game stage clicked to kick off ball. Event:", event); // For debugging
-            if (!_ballKicked) { // Double check state, though .one() should prevent multiple kicks
-                _kickOffBall();
-            }
-        });
-        console.log("Click handler for ball kick-off re-attached in _resetBall."); // For debugging
-        // --- Modification Ends ---
     }
 
     function _startSound() {
