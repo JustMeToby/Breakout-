@@ -84,6 +84,68 @@
     ];
     var _currentLevel = 0; // 0-indexed
 
+function _performFullReset(savedState) {
+    console.log("Performing full reset with savedState:", savedState);
+
+    // Remove namespaced event listeners
+    $(document).off("mousemove.game");
+    if (_$gameStage) { // Ensure _$gameStage is defined before trying to use it
+        _$gameStage.off("click.game");
+    } else {
+        console.error("_$gameStage is not defined in _performFullReset. This might indicate an issue if events were attached to it.");
+    }
+
+    // Call _startGame, passing the savedState.
+    // _startGame will need to be modified to handle this argument.
+    _startGame(savedState);
+}
+
+function _restoreBricks(brickData) {
+    if (_$gameStage) _$gameStage.find('.brick').remove(); // Clear existing bricks from DOM
+    _bricks = []; // Clear the internal _bricks array
+    var brickTpl = "<div class='brick'><div class='light'></div></div>";
+
+    brickData.forEach(function(brickInfo) {
+        var $brick = $(brickTpl);
+        if (brickInfo.type === 'normal') {
+            $brick.addClass('brick-normal yellow');
+            $brick.data('type', 'normal');
+            $brick.data('hits', 1); // Normal bricks are fully intact if they are in saved state
+        } else if (brickInfo.type === 'strong') {
+            $brick.addClass('brick-strong');
+            $brick.data('type', 'strong');
+            $brick.data('hits', brickInfo.hits); // Restore actual remaining hits
+            if (brickInfo.hits === 1) {
+                $brick.addClass('damaged'); // Add damaged class if it has 1 hit left
+            }
+        }
+
+        if (_$gameStage) _$gameStage.append($brick);
+        $brick.css({ top: brickInfo.top, left: brickInfo.left });
+        _bricks.push($brick);
+    });
+
+    if (_$gameStage) $('.brickcount').text(_bricks.length);
+
+    if (_bricks.length > 0) {
+        // Ensure _$gameStage is available and brick is attached for width/height calculation
+        if(_$gameStage && _bricks[0].closest(document.documentElement).length > 0) {
+             _brickWidth = ($bricks[0].width() + 3); // Assuming 3px is for margin/border
+             _brickHeight = ($bricks[0].height() + 3);
+        } else if (_bricks[0].width() !== null) { // Fallback if not in DOM but properties exist (less likely for new elements)
+            _brickWidth = ($bricks[0].width() + 3);
+            _brickHeight = ($bricks[0].height() + 3);
+        } else {
+            // Further fallback or default if width/height can't be determined
+            // For now, we'll rely on them being determinable if bricks exist.
+            // console.warn("Bricks exist but dimensions could not be determined in _restoreBricks.");
+        }
+    } else {
+        // Handle case with no bricks if necessary (e.g. set default _brickWidth/_brickHeight or leave them as is)
+        // For now, if no bricks, these don't strictly need to be accurate for gameplay logic that follows.
+    }
+}
+
     /**
      * initialize the game
      * @private
@@ -240,19 +302,23 @@
                                 _$ball.hide();
                                 $.sounds.play('hitmulti'); 
                                 
-                                $('#playAgainButtonWin').off('click').one('click', function() {
+                                $('#playAgainButtonWin').off('click').one('click', function(event) {
+                                    event.stopPropagation(); // Prevent click from bubbling to game stage
                                     $('#gamewin').hide();
-                                    _currentLevel = 0; 
+                                    _currentLevel = 0;
+                                    _ballKicked = false; // Explicitly set before init
                                     _init(); // Full reset and restart
                                 });
                         
-                                $('#nextLevelButton').off('click').one('click', function() {
+                                $('#nextLevelButton').off('click').one('click', function(event) {
+                                    event.stopPropagation(); // Prevent click from bubbling to game stage
                                     $('#gamewin').hide();
                                     _currentLevel++;
                                     if (_currentLevel >= _levels.length) {
                                         alert("GAME COMPLETE! Congratulations! Starting over from Level 1.");
                                         _currentLevel = 0; 
                                     }
+                                    _ballKicked = false; // Explicitly set before init
                                     _init(); // Full reset and restart for next level
                                 });
                                 $('#gamewin').slideDown();
@@ -312,35 +378,53 @@
         }
     }
 
-    function _startGame() {
-        // Always reset these for a new game (whether from _init or direct call)
-        _remainingLives = 5; 
-        _ballSpeed = 4; 
+    function _startGame(savedState) {
+        if (savedState && savedState.brickGrid) {
+            console.log("Starting game with savedState:", savedState);
+            _currentLevel = savedState.currentLevel;
+            _remainingLives = savedState.remainingLives;
+
+            _restoreBricks(savedState.brickGrid);
+            // $('.brickcount').text(_bricks.length); // _restoreBricks now handles this
+        } else {
+            console.log("Starting game fresh or for new level. Current level:", _currentLevel);
+            // This is the original logic for a new game or next level
+            _remainingLives = 5; // Default lives for a fresh start or new level
+            // _buildBricks() will be called below, only if not restoring from savedState.
+            // However, _buildBricks also clears bricks, so we need to ensure it's called correctly.
+            // Let's adjust: _buildBricks clears and builds. If savedState, we clear, then will restore.
+            // If no savedState, we call _buildBricks.
+            _buildBricks(); // Build bricks for the current level
+        }
+
+        // Common setup for both scenarios (new game or restored game)
+        _ballSpeed = 4;
         _ballKicked = false;
         _ballVelocityX = 0;
         _ballVelocityY = 0;
-        _mouseX = 0; 
+        _mouseX = 0;
         _mouseOldX = 0;
-        
-        // Clear any existing game loop
+
         if (_gameLoopId) {
             window.cancelAnimationFrame(_gameLoopId);
-            _gameLoopId = null; 
+            _gameLoopId = null;
         }
 
-        // Setup event listeners (namespaced for easier removal)
         $(document).off("mousemove.game").on("mousemove.game", function (event) {
             _mouseX = event.clientX;
         });
-        _$gameStage.off("click.game"); // Clear previous click listener
+        _$gameStage.off("click.game");
 
         _$player.css("top", _playerYPos);
-        $('.lives').text(_remainingLives); 
-        _buildBricks();
-        _resetBall(); // This will set up the initial ball position and kick-off listener
+        $('.lives').text(_remainingLives); // Update lives display based on savedState or default
+
+        // If not restoring from savedState, _buildBricks was already called.
+        // If restoring, bricks are cleared, and _restoreBricks placeholder is noted.
+        // _resetBall will handle initial ball position.
+        _resetBall();
         
-        _gameLoopId = true; // Temporarily set to non-null to allow _nextLoopIteration to start
-        _nextLoopIteration(); // Start the game loop
+        _gameLoopId = true;
+        _nextLoopIteration();
     }
 
     function _kickOffBall() {
@@ -361,6 +445,35 @@
 
     function _resetBall() {
         _$ball.show(); 
+
+        if (_remainingLives > 0) {
+            var savedState = {};
+            savedState.currentLevel = _currentLevel;
+            savedState.remainingLives = _remainingLives; // Intentionally save the decremented value
+            savedState.brickGrid = [];
+
+            for (var i = 0; i < _bricks.length; i++) {
+                var $brick = _bricks[i];
+                // Ensure brick is valid and attached to DOM, otherwise skip.
+                // For this implementation, we assume bricks in _bricks array are active.
+                // Destroyed bricks are spliced out. Damaged ones have their 'hits' count updated.
+                if ($brick && $brick.length > 0 && $brick.closest(document.documentElement).length > 0) {
+                    var brickPos = $brick.position();
+                    var brickType = $brick.data('type');
+                    var remainingHits = $brick.data('hits');
+
+                    savedState.brickGrid.push({
+                        top: brickPos.top,
+                        left: brickPos.left,
+                        type: brickType,
+                        hits: remainingHits
+                    });
+                }
+            }
+            _performFullReset(savedState);
+            return; // Prevent old ball reset logic when a life is lost and game continues
+        }
+
         if (_remainingLives === 0) {
             if (_gameLoopId) {
                 window.cancelAnimationFrame(_gameLoopId);
