@@ -50,7 +50,7 @@
             "X S X S", // 7 chars (last X removed for 7 col)
             " S   S ",
             "X     X",
-            " S XXX S",
+            "S XXX S",
             "X     X",
             " S   S ",
             "X S X S",
