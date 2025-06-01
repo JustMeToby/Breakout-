@@ -421,12 +421,39 @@ function _restoreBricks(brickData) {
         // If not restoring from savedState, _buildBricks was already called.
         // If restoring, bricks are cleared, and _restoreBricks placeholder is noted.
         // _resetBall will handle initial ball position, but only if not restoring from a saved state.
-        if (!savedState) {
-            _resetBall();
-        }
+        // REMOVED: if (!savedState) {
+        //    _resetBall();
+        // }
         
-        _gameLoopId = true;
-        _nextLoopIteration();
+        _prepareBallForLaunch(); // Centralized ball preparation and launch listener setup
+
+        // Ensure game loop starts if not already active (e.g. after _performFullReset or initial start)
+        if (_gameLoopId !== true && _gameLoopId !== null && typeof _gameLoopId !== 'number') { // Check if it's not already a valid loop ID or true
+             _gameLoopId = true; // Set a placeholder true to indicate it's pending the first animation frame
+        }
+        _nextLoopIteration(); // This will request animation frame if _gameLoopId is not null
+    }
+
+    function _prepareBallForLaunch() {
+        _ballKicked = false;
+        _$ball.show(); // Ensure ball is visible
+
+        // Position ball on paddle
+        // Ensure player position is valid before using it.
+        var playerLeft = (_$player.position() && typeof _$player.position().left !== 'undefined') ? _$player.position().left : (_stageWidth / 2 - _playerWidth / 2);
+        _$ball.css({
+            left: playerLeft + _playerWidth * .5 - _ballWidth * .5,
+            top: _playerYPos - _ballHeight
+        });
+
+        _$gameStage.off('click.game'); // Remove any existing namespaced click handlers
+        _$gameStage.one("click.game", function(event) {
+            // console.log("Game stage clicked to kick off ball. Event:", event); // For debugging
+            if (!_ballKicked) { // Double check state, though .one() should prevent multiple kicks
+                _kickOffBall();
+            }
+        });
+        // console.log("Click handler for ball kick-off attached by _prepareBallForLaunch."); // For debugging
     }
 
     function _kickOffBall() {
@@ -496,27 +523,8 @@ function _restoreBricks(brickData) {
             return; 
         }
 
-        _ballKicked = false;
-        // Ensure player position is valid before using it.
-        var playerLeft = (_$player.position() && typeof _$player.position().left !== 'undefined') ? _$player.position().left : (_stageWidth / 2 - _playerWidth / 2);
-        _$ball.css({
-            left: playerLeft + _playerWidth * .5 - _ballWidth * .5,
-            top: _playerYPos - _ballHeight
-        });
-        
-        // --- Modification Starts ---
-        // Remove any existing namespaced click handlers explicitly
-        _$gameStage.off('click.game'); 
-        
-        // Add the one-time click handler
-        _$gameStage.one("click.game", function(event) {
-            console.log("Game stage clicked to kick off ball. Event:", event); // For debugging
-            if (!_ballKicked) { // Double check state, though .one() should prevent multiple kicks
-                _kickOffBall();
-            }
-        });
-        console.log("Click handler for ball kick-off re-attached in _resetBall."); // For debugging
-        // --- Modification Ends ---
+        // Ball positioning and listener attachment are now handled by _prepareBallForLaunch()
+        // called from _startGame().
     }
 
     function _startSound() {
