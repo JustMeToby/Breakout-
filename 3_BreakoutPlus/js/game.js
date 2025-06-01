@@ -411,7 +411,7 @@ function _restoreBricks(brickData) {
         }
 
         $(document).off("mousemove.game").on("mousemove.game", function (event) {
-            _mouseX = event.clientX;
+            _mouseX = event.clientX - _gameStagePos.left;
         });
         _$gameStage.off("click.game");
 
