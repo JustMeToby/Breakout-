@@ -50,7 +50,7 @@
             "X S X S", // 7 chars (last X removed for 7 col)
             " S   S ",
             "X     X",
-            " S XXX S",
+            "S XXX S",
             "X     X",
             " S   S ",
             "X S X S",
@@ -130,11 +130,11 @@ function _restoreBricks(brickData) {
     if (_bricks.length > 0) {
         // Ensure _$gameStage is available and brick is attached for width/height calculation
         if(_$gameStage && _bricks[0].closest(document.documentElement).length > 0) {
-             _brickWidth = ($bricks[0].width() + 3); // Assuming 3px is for margin/border
-             _brickHeight = ($bricks[0].height() + 3);
+             _brickWidth = (_bricks[0].width() + 3); // Assuming 3px is for margin/border
+             _brickHeight = (_bricks[0].height() + 3);
         } else if (_bricks[0].width() !== null) { // Fallback if not in DOM but properties exist (less likely for new elements)
-            _brickWidth = ($bricks[0].width() + 3);
-            _brickHeight = ($bricks[0].height() + 3);
+            _brickWidth = (_bricks[0].width() + 3);
+            _brickHeight = (_bricks[0].height() + 3);
         } else {
             // Further fallback or default if width/height can't be determined
             // For now, we'll rely on them being determinable if bricks exist.
