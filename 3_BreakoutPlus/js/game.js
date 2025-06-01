@@ -420,8 +420,10 @@ function _restoreBricks(brickData) {
 
         // If not restoring from savedState, _buildBricks was already called.
         // If restoring, bricks are cleared, and _restoreBricks placeholder is noted.
-        // _resetBall will handle initial ball position.
-        _resetBall();
+        // _resetBall will handle initial ball position, but only if not restoring from a saved state.
+        if (!savedState) {
+            _resetBall();
+        }
         
         _gameLoopId = true;
         _nextLoopIteration();
